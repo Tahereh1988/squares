@@ -61,7 +61,7 @@ parser.add_option("-i", "--incells", dest="incells", default=False,
                   help="ROI for statistics is in EDM cells")
 
 # d=dipole(1.2,0,0,0,0,100000)  # dipole1
-d=dipole(0,0,1.2,0,0,1)  # dipole2
+# d=dipole(0,0,1.2,0,0,1)  # dipole2
 # d=dipole(0,0,1.2,1,0,0)  # dipole3
 
 (options,args)=parser.parse_args()
@@ -477,33 +477,14 @@ class sensor:
         self.pos = pos
 
 class sensorarray:
-    def __init__(self,xdim,ydim,zdim,corners):
-        x = corners[1]-corners[0]
-        y = corners[2]-corners[0]
-        z = corners[3]-corners[0]
-        #self.sensorgrid=np.mgrid[-a:a:xdim*1j,-a:a:ydim*1j,-a:a:zdim*1j]
-        #print(self.sensorgrid)
+    def __init__(self):
         self.sensors = []
-        if(xdim==1 and ydim==1 and zdim==1):
-            pos = corners[0]+x/2+y/2
-            self.sensors.append(sensor(pos))
-            pos = corners[0]+x/2+y/2+z
-            self.sensors.append(sensor(pos))
-            pos = corners[0]+y/2+z/2
-            self.sensors.append(sensor(pos))
-            pos = corners[0]+y/2+z/2+x
-            self.sensors.append(sensor(pos))
-            pos = corners[0]+x/2+z/2
-            self.sensors.append(sensor(pos))
-            pos = corners[0]+x/2+z/2+y
-            self.sensors.append(sensor(pos))
-        else:
-            for i in range(xdim):
-                for j in range(ydim):
-                    for k in range(zdim):
-                        pos = corners[0]+x*i/(xdim-1)+y*j/(ydim-1)+z*k/(zdim-1)
-                        self.sensors.append(sensor(pos))
         self.numsensors = len(self.sensors)
+        
+    def add_sensor(self, pos):
+        self.sensors.append(sensor(pos))
+        self.numsensors = len(self.sensors)
+        
     def draw_sensor(self,number,ax):
         x = self.sensors[number].pos[0]
         y = self.sensors[number].pos[1]
@@ -511,41 +492,48 @@ class sensorarray:
         c = 'r'
         m = 'o'
         ax.scatter(x,y,z,c=c,marker=m)
+        
     def draw_sensors(self,ax):
         for number in range(self.numsensors):
             self.draw_sensor(number,ax)
-    def vec_b(self):
+            
+    def vec_b(self, bxtarget, bytarget, bztarget):
         # makes a vector of magnetic fields in the same ordering as
         # the_matrix class below
-        the_vector=np.zeros((self.numsensors))
+        the_vector=np.zeros((self.numsensors*3))
         for j in range(myarray.numsensors):
             r=myarray.sensors[j].pos
             b=np.array([bxtarget(r[0],r[1],r[2]),
                         bytarget(r[0],r[1],r[2]),
                         bztarget(r[0],r[1],r[2])])
-            bmod=b[2]#sqrt(b[0]**2+b[1]**2+b[2]**2)
-            the_vector[j]=bmod
+            for k in range(3):
+                the_vector[j*3+k] = b[k]
         return the_vector
-
 
 # set up array of sensors
 a_sensors=0.5
-p0=np.array([-a_sensors/2,-a_sensors/2,-a_sensors/2])
-p1=p0+np.array([a_sensors,0,0])
-p2=p0+np.array([0,a_sensors,0])
-p3=p0+np.array([0,0,a_sensors])
-points=(p0,p1,p2,p3)
+# p0=np.array([-a_sensors/2,-a_sensors/2,-a_sensors/2])
+# p1=p0+np.array([a_sensors,0,0])
+# p2=p0+np.array([0,a_sensors,0])
+# p3=p0+np.array([0,0,a_sensors])
+# points=(p0,p1,p2,p3)
 
-nsensors=int(options.nsensors)
-myarray=sensorarray(nsensors,nsensors,nsensors,points)
-print(myarray.sensors[0].pos)
-print(myarray.numsensors)
-print(myarray.sensors[myarray.numsensors-1].pos)
-print(myarray.sensors[myarray.numsensors-2].pos)
+# nsensors=int(options.nsensors)
+myarray=sensorarray()
+# print(myarray.sensors[0].pos)
+# print(myarray.numsensors)
+# print(myarray.sensors[myarray.numsensors-1].pos)
+# print(myarray.sensors[myarray.numsensors-2].pos)
 
-print('the vector test')
-print(len(myarray.vec_b()),myarray.vec_b())
+# print('the vector test')
+# print(len(myarray.vec_b()),myarray.vec_b())
 
+with open('SP.text') as f:
+    for line in f:
+        pos = np.array([float(u) for u in line.split()])
+        print(pos)
+        myarray.add_sensor(pos)
+        
 import matplotlib as mpl
 from mpl_toolkits.mplot3d import Axes3D
 import numpy as np
@@ -553,25 +541,30 @@ import matplotlib.pyplot as plt
 
 mpl.rcParams['legend.fontsize'] = 10
 
-if(options.traces):
-    fig = plt.figure()
-    ax=fig.add_subplot(111,projection='3d')
-    myset.draw_coils(ax)
-    myarray.draw_sensors(ax)
-    ax.set_xlabel('x (m)')
-    ax.set_ylabel('y (m)')
-    ax.set_zlabel('z (m)')
-    plt.show()
+# if(options.traces):
+#     fig = plt.figure()
+#     ax=fig.add_subplot(111,projection='3d')
+#     myset.draw_coils(ax)
+#     myarray.draw_sensors(ax)
+#     ax.set_xlabel('x (m)')
+#     ax.set_ylabel('y (m)')
+#     ax.set_zlabel('z (m)')
+#     plt.show()
 
 
 from matplotlib import cm
 
 class the_matrix:
     def __init__(self,myset,myarray):
-        self.m=np.zeros((myset.numcoils,myarray.numsensors))
+        self.m=np.zeros((myset.numcoils,myarray.numsensors*3))
         #self.fill(myset,myarray)
+        print(myset.numcoils)
+        print(myarray.numsensors)
+        print(self.m)
         self.fillspeed(myset,myarray)
+        print(self.m)
         self.condition = np.linalg.cond(self.m)
+        
         print(self.condition)
         l = 1e-8
         n = 50
@@ -717,12 +710,13 @@ mymatrix=the_matrix(myset,myarray)
 print('The condition number is %f'%mymatrix.condition)
 if(options.matrices):
     mymatrix.show_matrices()
-
+print('Vec_b is...')
+print(myarray.vec_b(bxtarget, bytarget, bztarget))
 # Set up vector of desired fields
 
 #print(len(myarray.vec_b()),myarray.vec_b())
 #vec_i=mymatrix.Minvp.dot(myarray.vec_b())
-vec_i=mymatrix.M_inverse.dot(myarray.vec_b())
+vec_i=mymatrix.M_inverse.dot(myarray.vec_b(bxtarget, bytarget, bztarget))
 print("The shape of vec_i is ",np.shape(vec_i))
 print('vec x or vec I is...')
 print(vec_i)
@@ -778,14 +772,14 @@ bz1d_target_zscan=bztarget(0.,0.,points1d)*np.ones(np.shape(points1d))
 # vec_i=mymatrix.M_inverse.dot(myarray.vec_b())
 
 print(np.shape(mymatrix.M_inverse))
-print(np.shape(myarray.vec_b()))
+print(np.shape(myarray.vec_b(bxtarget, bytarget, bztarget)))
 print(np.shape(vec_i))
 
 
 # checking everything that will go into calculating slong
 print(np.shape(mymatrix.capital_M))
 print(np.shape(vec_i))
-print(np.shape(myarray.vec_b()))
+print(np.shape(myarray.vec_b(bxtarget, bytarget, bztarget)))
 
 s_reg =sum((vec_i)**2)
 print('s_reg is...')
@@ -798,7 +792,7 @@ print(s_reg)
 # print(s_long)
 
 print('s_long_v2 is...')
-s_long_v2=(mymatrix.capital_M.dot(vec_i))-myarray.vec_b()
+s_long_v2=(mymatrix.capital_M.dot(vec_i))-myarray.vec_b(bxtarget, bytarget, bztarget)
 print(s_long_v2)
 print(np.shape(s_long_v2))
 s_long2=sum((s_long_v2)**2)
