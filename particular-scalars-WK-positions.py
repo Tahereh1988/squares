@@ -15,7 +15,7 @@
 
 from scipy.constants import mu_0, pi
 import numpy as np
-from patchlib.patch import *
+from patchlib.patch import coilset
 from Pis.Pislib import *
 from dipole import *
 from numpy.linalg import inv
@@ -559,18 +559,18 @@ class the_matrix:
         self.m=np.zeros((myset.numcoils,myarray.numsensors*3))
         #self.fill(myset,myarray)
         print(myset.numcoils)
-        print(myarray.numsensors)
+        print('numsensors',myarray.numsensors)
         print(self.m)
         self.fillspeed(myset,myarray)
         print(self.m)
         self.condition = np.linalg.cond(self.m)
         
         print(self.condition)
-        l = 1e-8
+        l = 1e-7
         n = 50
         Lambda = l**2
         print(Lambda)
-        print("The shape of m is ",shape(self.m))
+        #print("The shape of m is ",shape(self.m))
         print(np.max(self.m))
         self.capital_M = self.m.transpose()
         print(np.shape(self.capital_M))
